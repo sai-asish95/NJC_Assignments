@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="getAccountsFlights" doc:id="9b885b76-d94b-46cb-b977-6538811c8bf2" >
+		<http:listener doc:name="Listener" doc:id="41b4942b-b3ff-4e00-b7dc-e089ac477846" config-ref="HTTP_Listener_config" path="/flights_accounts"/>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="dab77546-6306-47bf-a8e6-640b0fc9f60d" >
+			<route >
+				<flow-ref doc:name="getAccounts" doc:id="ca691ca4-7ead-437f-9217-5e179433b637" name="accounts"/>
+			</route>
+			<route >
+				<flow-ref doc:name="getFlights" doc:id="b39b8842-df1b-4be3-afb4-c1f5407d6c1e" name="flights"/>
+			</route>
+		</scatter-gather>
+		<choice doc:name="Choice" doc:id="b62ca83c-dd66-4171-ac5f-cab25fa97953" >
+			<when expression="#[not ( isEmpty(payload['0'].payload) or payload['1'].payload.body.listAllFlightsResponse == null )]">
+				<ee:transform doc:name="Transform Message" doc:id="56e0497e-1183-4a5d-997a-1c1cc7964bc9">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	accounts: {
+		attributes: payload['0'].attributes,
+		payload: payload['0'].payload
+	},
+	flights: {
+		attributes: payload['1'].attributes,
+		payload: payload['1'].payload.body
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</when>
+			<when expression="#[isEmpty(payload['0'].payload)]">
+				<set-payload value="Empty data returned from accounts" doc:name="empty accounts data " doc:id="c447461c-15dc-4e28-89bf-705a50f3bead" />
+			</when>
+			<when expression="#[payload['1'].payload.body.listAllFlightsResponse == null]">
+				<set-payload value="Empty data returned from flights" doc:name="empty flights data" doc:id="1b699624-d318-42a9-9381-5f4c866a3c10" />
+			</when>
+			<otherwise >
+				<set-payload value="empty data from both flights and accounts" doc:name="empty accounts and flights data " doc:id="51c1b0fa-3f1e-4711-9b50-9da5d4a3df01" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="e2ec55b4-8133-4a46-af14-cfcb7f39d043" />
+	</flow>
+</mule>
